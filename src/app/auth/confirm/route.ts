@@ -7,12 +7,16 @@ export async function GET(request: Request) {
   const type = searchParams.get("type")
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://inspecciones.hisense-iberia.com"
 
+  console.log("AUTH CONFIRM:", { token_hash, type })
+
   if (token_hash && type) {
     const supabase = createClient()
     const { error } = await supabase.auth.verifyOtp({
       type: type as any,
       token_hash,
     })
+
+    console.log("VERIFY OTP ERROR:", error)
 
     if (!error) {
       if (type === "recovery") {
