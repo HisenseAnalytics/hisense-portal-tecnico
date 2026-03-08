@@ -16,9 +16,6 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single()
 
-  console.log("DASHBOARD PROFILE:", profile)
-  console.log("DASHBOARD PROFILE ERROR:", error)
-
   if (!profile) redirect("/login")
 
   if (profile.role === "admin") redirect("/admin")

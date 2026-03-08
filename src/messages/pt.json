@@ -1,0 +1,62 @@
+{
+  "auth": {
+    "login": "Iniciar sessao",
+    "register": "Criar conta",
+    "logout": "Sair",
+    "email": "Correio eletronico",
+    "password": "Palavra-passe",
+    "forgot_password": "Esqueceste a palavra-passe?",
+    "no_account": "Nao tens conta?",
+    "have_account": "Ja tens conta?",
+    "full_name": "Nome completo",
+    "send_link": "Enviar link",
+    "recover_password": "Recuperar palavra-passe",
+    "recover_description": "Introduz o teu email e enviaremos um link para recuperares a palavra-passe."
+  },
+  "dashboard": {
+    "pending": "Pendentes",
+    "completed": "Concluidas",
+    "pending_reviews": "Revisoes pendentes",
+    "no_pending": "Nao tens revisoes pendentes",
+    "hello": "Ola"
+  },
+  "inspection": {
+    "title": "Formulario de revisao",
+    "store_reference": "Referencia da loja",
+    "technician_verification": "Verificacao do tecnico",
+    "fault_classification": "Classificacao da avaria",
+    "photos": "Fotos",
+    "model": "Modelo",
+    "serial": "N serie",
+    "verified_model": "Modelo verificado",
+    "verified_serial": "Numero de serie verificado",
+    "matches": "Coincide com a referencia",
+    "no_matches": "Nao coincide com a referencia",
+    "reason": "Motivo",
+    "submit": "Enviar revisao",
+    "submitting": "A enviar revisao...",
+    "fault_detail": "Detalhe da avaria",
+    "photo_serial": "Foto numero de serie",
+    "photo_model": "Foto modelo",
+    "photo_fault": "Foto da avaria",
+    "take_photo": "Tirar ou carregar foto",
+    "photo_selected": "Foto selecionada",
+    "select_fault": "Seleciona uma classificacao",
+    "describe_fault": "Descreve a avaria em detalhe..."
+  },
+  "faults": {
+    "aesthetic_damage": "Dano estetico",
+    "structural_impact": "Impacto estrutural",
+    "water_damage": "Dano por agua / humidade",
+    "used_merchandise": "Mercadoria usada",
+    "damaged_packaging": "Embalagem danificada",
+    "incomplete_product": "Produto incompleto",
+    "no_power": "Nao liga",
+    "electrical_fault": "Avaria eletrica",
+    "mechanical_fault": "Avaria mecanica",
+    "software_fault": "Falha de software / ecra",
+    "abnormal_noise": "Ruido anormal",
+    "gas_leak": "Fuga de gas",
+    "no_fault_found": "Sem avaria aparente (NFF)"
+  }
+}
