@@ -3,14 +3,19 @@ import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const code = searchParams.get("code")
-  const next = searchParams.get("next") ?? "/dashboard"
+  const token_hash = searchParams.get("token_hash")
+  const type = searchParams.get("type")
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://inspecciones.hisense-iberia.com"
 
-  if (code) {
+  if (token_hash && type) {
     const supabase = createClient()
-    await supabase.auth.exchangeCodeForSession(code)
-    return NextResponse.redirect(`${appUrl}${next}`)
+    const { error } = await supabase.auth.verifyOtp({
+      type: "magiclink",
+      token_hash,
+    })
+    if (!error) {
+      return NextResponse.redirect(`${appUrl}/auth/reset-password`)
+    }
   }
 
   return NextResponse.redirect(`${appUrl}/login`)
