@@ -6,7 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 export async function POST(request: Request) {
   const { technicianEmail, technicianName, storeName, storeCity, units } = await request.json()
 
-  const unitsHtml = units.map((u: any) => `
+  const unitsHtml = units.map((u: { verified_model: string; verified_serial: string; fault_label: string; matches: boolean }) => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${u.verified_model}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${u.verified_serial}</td>
