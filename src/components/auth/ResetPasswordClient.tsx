@@ -14,12 +14,22 @@ export default function ResetPasswordClient() {
 
   useEffect(() => {
     const supabase = createClient()
-    // Escucha el evento PASSWORD_RECOVERY que Supabase dispara automáticamente
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+
+    // Verificar si ya hay sesión activa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setReady(true)
+        return
+      }
+    })
+
+    // Escuchar evento PASSWORD_RECOVERY
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setReady(true)
       }
     })
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -46,7 +56,8 @@ export default function ResetPasswordClient() {
       return
     }
 
-    router.push("/dashboard")
+    await supabase.auth.signOut()
+    router.push("/login")
   }
 
   return (
@@ -59,9 +70,13 @@ export default function ResetPasswordClient() {
         <h1 className="text-xl font-semibold text-gray-800 mb-2">Nueva contraseña</h1>
         <p className="text-sm text-gray-500 mb-6">Introduce tu nueva contraseña.</p>
         {!ready && (
-          <p className="text-sm text-amber-500 bg-amber-50 px-3 py-2 rounded-lg mb-4">
+          <div className="flex items-center gap-2 text-sm text-amber-500 bg-amber-50 px-3 py-2 rounded-lg mb-4">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
             Verificando sesión...
-          </p>
+          </div>
         )}
         <form onSubmit={handleReset} className="space-y-4">
           <div>
