@@ -5,18 +5,26 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const token_hash = searchParams.get("token_hash")
   const type = searchParams.get("type")
+  const code = searchParams.get("code")
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://inspecciones.hisense-iberia.com"
 
-  console.log("AUTH CONFIRM:", { token_hash, type })
+  const supabase = createClient()
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      if (type === "recovery") {
+        return NextResponse.redirect(`${appUrl}/auth/reset-password`)
+      }
+      return NextResponse.redirect(`${appUrl}/dashboard`)
+    }
+  }
 
   if (token_hash && type) {
-    const supabase = createClient()
     const { error } = await supabase.auth.verifyOtp({
       type: type as any,
       token_hash,
     })
-
-    console.log("VERIFY OTP ERROR:", error)
 
     if (!error) {
       if (type === "recovery") {
