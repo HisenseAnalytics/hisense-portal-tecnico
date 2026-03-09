@@ -35,3 +35,6 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${appUrl}/dashboard`)
     }
   }
+
+  return NextResponse.redirect(`${appUrl}/login`)
+}
