@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -10,7 +10,25 @@ export default function ResetPasswordClient() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
+  const [hasSession, setHasSession] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        setHasSession(true)
+      } else {
+        // Si no hay sesión, redirigir a forgot-password
+        setError("El enlace ha expirado o es inválido. Solicita uno nuevo.")
+      }
+      setChecking(false)
+    }
+    checkSession()
+  }, [router])
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +52,38 @@ export default function ResetPasswordClient() {
     setSuccess(true)
     await supabase.auth.signOut()
     setTimeout(() => router.push("/login"), 2000)
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center px-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="text-blue-500 text-xl mb-4">Verificando...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasSession && error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center px-4">
+        <div className="mb-8 text-center">
+          <div className="text-4xl font-bold tracking-widest text-blue-600">HISENSE</div>
+          <p className="text-sm text-gray-500 mt-1">Portal Tecnico</p>
+        </div>
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="text-red-500 text-5xl mb-4">✗</div>
+          <h1 className="text-xl font-semibold text-gray-800 mb-2">Enlace inválido</h1>
+          <p className="text-sm text-gray-500 mb-6">{error}</p>
+          <button
+            onClick={() => router.push("/forgot-password")}
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+          >
+            Solicitar nuevo enlace
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (success) {

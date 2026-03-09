@@ -2,14 +2,15 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
+  const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get("token_hash")
   const type = searchParams.get("type")
   const code = searchParams.get("code")
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://inspecciones.hisense-iberia.com"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin
 
   const supabase = createClient()
 
+  // Método 1: PKCE flow con código
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
@@ -20,9 +21,10 @@ export async function GET(request: Request) {
     }
   }
 
+  // Método 2: Magic link / OTP con token_hash
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
-      type: type as any,
+      type: type as "recovery" | "signup" | "email",
       token_hash,
     })
 
@@ -33,6 +35,3 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${appUrl}/dashboard`)
     }
   }
-
-  return NextResponse.redirect(`${appUrl}/login`)
-}
