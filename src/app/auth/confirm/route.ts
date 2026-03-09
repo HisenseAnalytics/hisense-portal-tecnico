@@ -14,25 +14,12 @@ export async function GET(request: NextRequest) {
 
   if (token_hash && type) {
     const supabase = await createClient()
-    const { data, error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     })
-    if (!error && data.session) {
-      const response = NextResponse.redirect(redirectTo)
-      response.cookies.set("sb-access-token", data.session.access_token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: data.session.expires_in,
-      })
-      response.cookies.set("sb-refresh-token", data.session.refresh_token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 365,
-      })
-      return response
+    if (!error) {
+      return NextResponse.redirect(redirectTo)
     }
   }
 
