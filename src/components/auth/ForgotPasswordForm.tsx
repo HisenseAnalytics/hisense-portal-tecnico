@@ -16,12 +16,16 @@ export default function ForgotPasswordForm() {
     setError("")
 
     const supabase = createClient()
+    console.log("Sending reset email to:", email)
+    console.log("Redirect URL:", `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?type=recovery`)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?type=recovery`,
     })
 
+    console.log("Reset password error:", error)
+
     if (error) {
-      setError("Error al enviar el correo. Verifica el email.")
+      setError(error.message)
       setLoading(false)
       return
     }
