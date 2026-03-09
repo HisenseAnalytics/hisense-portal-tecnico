@@ -19,7 +19,7 @@ export default function ForgotPasswordForm() {
     console.log("Sending reset email to:", email)
     console.log("Redirect URL:", `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?type=recovery`)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `https://inspecciones.hisense-iberia.com/auth/reset-password`,
+      redirectTo: `https://inspecciones.hisense-iberia.com/auth/confirm?next=/auth/reset-password`,
     })
 
     console.log("Reset password error:", error)
