@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Profile } from "@/lib/types"
-import { LogOut, Search, Filter, Download } from "lucide-react"
+import { LogOut, Search, Filter, Download, X, Camera } from "lucide-react"
 
 interface Store {
   name: string
@@ -33,6 +33,9 @@ interface InspectionRow {
   serial_matches: boolean
   fault_category: string
   fault_detail: string | null
+  photo_model_url: string | null
+  photo_serial_url: string | null
+  photo_fault_url: string | null
   technician: Technician | null
   assigned_unit: AssignedUnit | null
 }
@@ -63,6 +66,8 @@ export default function EngineerDashboard({ profile, inspections }: Props) {
   const [filterFault, setFilterFault] = useState("")
   const [filterStore, setFilterStore] = useState("")
   const [filterMatch, setFilterMatch] = useState("")
+  const [selectedInspection, setSelectedInspection] = useState<InspectionRow | null>(null)
+  const [activePhoto, setActivePhoto] = useState<string | null>(null)
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -70,7 +75,7 @@ export default function EngineerDashboard({ profile, inspections }: Props) {
     window.location.href = "/login"
   }
 
-  const stores = [...new Set(
+  const stores: string[] = [...new Set<string>(
     inspections
       .map(i => i.assigned_unit?.assignment?.store?.name ?? "")
       .filter(s => s !== "")
@@ -121,6 +126,9 @@ export default function EngineerDashboard({ profile, inspections }: Props) {
     a.download = `revisiones_${new Date().toISOString().split("T")[0]}.csv`
     a.click()
   }
+
+  const hasPhotos = (i: InspectionRow) =>
+    i.photo_model_url || i.photo_serial_url || i.photo_fault_url
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -238,6 +246,7 @@ export default function EngineerDashboard({ profile, inspections }: Props) {
                   <th className="px-4 py-3 text-left">Serie</th>
                   <th className="px-4 py-3 text-left">Coincide</th>
                   <th className="px-4 py-3 text-left">Fallo</th>
+                  <th className="px-4 py-3 text-left">Fotos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -279,6 +288,19 @@ export default function EngineerDashboard({ profile, inspections }: Props) {
                         <div className="text-xs text-gray-400 truncate max-w-32">{i.fault_detail}</div>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      {hasPhotos(i) ? (
+                        <button
+                          onClick={() => { setSelectedInspection(i); setActivePhoto(i.photo_model_url || i.photo_serial_url || i.photo_fault_url) }}
+                          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg transition"
+                        >
+                          <Camera size={12} />
+                          Ver fotos
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300">Sin fotos</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -286,6 +308,124 @@ export default function EngineerDashboard({ profile, inspections }: Props) {
           </div>
         </div>
       </main>
+
+      {/* Modal de fotos */}
+      {selectedInspection && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4"
+          onClick={() => { setSelectedInspection(null); setActivePhoto(null) }}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800">Fotos de la inspeccion</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {selectedInspection.verified_model} · {selectedInspection.verified_serial}
+                </p>
+              </div>
+              <button
+                onClick={() => { setSelectedInspection(null); setActivePhoto(null) }}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Foto ampliada */}
+              {activePhoto && (
+                <div className="mb-6 rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                  <img
+                    src={activePhoto}
+                    alt="Foto ampliada"
+                    className="w-full object-contain max-h-96"
+                  />
+                </div>
+              )}
+
+              {/* Miniaturas */}
+              <div className="grid grid-cols-3 gap-3">
+                {selectedInspection.photo_model_url && (
+                  <div
+                    className={`cursor-pointer rounded-xl overflow-hidden border-2 transition ${
+                      activePhoto === selectedInspection.photo_model_url
+                        ? "border-blue-500"
+                        : "border-gray-100 hover:border-blue-300"
+                    }`}
+                    onClick={() => setActivePhoto(selectedInspection.photo_model_url!)}
+                  >
+                    <img
+                      src={selectedInspection.photo_model_url}
+                      alt="Foto modelo"
+                      className="w-full h-32 object-cover"
+                    />
+                    <p className="text-xs text-center text-gray-500 py-1.5 bg-gray-50">Modelo</p>
+                  </div>
+                )}
+                {selectedInspection.photo_serial_url && (
+                  <div
+                    className={`cursor-pointer rounded-xl overflow-hidden border-2 transition ${
+                      activePhoto === selectedInspection.photo_serial_url
+                        ? "border-blue-500"
+                        : "border-gray-100 hover:border-blue-300"
+                    }`}
+                    onClick={() => setActivePhoto(selectedInspection.photo_serial_url!)}
+                  >
+                    <img
+                      src={selectedInspection.photo_serial_url}
+                      alt="Foto serie"
+                      className="w-full h-32 object-cover"
+                    />
+                    <p className="text-xs text-center text-gray-500 py-1.5 bg-gray-50">Numero de serie</p>
+                  </div>
+                )}
+                {selectedInspection.photo_fault_url && (
+                  <div
+                    className={`cursor-pointer rounded-xl overflow-hidden border-2 transition ${
+                      activePhoto === selectedInspection.photo_fault_url
+                        ? "border-blue-500"
+                        : "border-gray-100 hover:border-blue-300"
+                    }`}
+                    onClick={() => setActivePhoto(selectedInspection.photo_fault_url!)}
+                  >
+                    <img
+                      src={selectedInspection.photo_fault_url}
+                      alt="Foto fallo"
+                      className="w-full h-32 object-cover"
+                    />
+                    <p className="text-xs text-center text-gray-500 py-1.5 bg-gray-50">Fallo</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Info adicional */}
+              <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-400">Tecnico</p>
+                  <p className="text-sm text-gray-700 font-medium">{selectedInspection.technician?.full_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Tienda</p>
+                  <p className="text-sm text-gray-700 font-medium">{selectedInspection.assigned_unit?.assignment?.store?.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Fallo</p>
+                  <p className="text-sm text-gray-700 font-medium">{FAULT_LABELS[selectedInspection.fault_category]}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Fecha</p>
+                  <p className="text-sm text-gray-700 font-medium">
+                    {new Date(selectedInspection.created_at).toLocaleDateString("es-ES")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
