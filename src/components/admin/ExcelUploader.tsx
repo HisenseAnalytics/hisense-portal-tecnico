@@ -8,6 +8,7 @@ interface Unit {
   model: string
   serial: string
   reason: string
+  store_internal_id?: string
 }
 
 interface Props {
@@ -49,6 +50,9 @@ export default function ExcelUploader({ onUnitsLoaded }: Props) {
         const reasonIdx = headerRow.findIndex((h: string) =>
           h.includes("motivo") || h.includes("reason") || h.includes("devolucion")
         )
+        const internalIdIdx = headerRow.findIndex((h: string) =>
+          h.includes("interno") || h.includes("identificacion") || h.includes("nro") || h.includes("id interno")
+        )
 
         if (modelIdx === -1 || serialIdx === -1) {
           setError("El archivo debe tener columnas: Modelo, Serie/Serial, Motivo")
@@ -63,6 +67,9 @@ export default function ExcelUploader({ onUnitsLoaded }: Props) {
             model: String(row[modelIdx] || "").trim(),
             serial: String(row[serialIdx] || "").trim(),
             reason: reasonIdx !== -1 ? String(row[reasonIdx] || "").trim() : "",
+            store_internal_id: internalIdIdx !== -1 && row[internalIdIdx]
+              ? String(row[internalIdIdx]).trim()
+              : undefined,
           })
         }
 
@@ -90,14 +97,18 @@ export default function ExcelUploader({ onUnitsLoaded }: Props) {
   const downloadTemplate = (e: React.MouseEvent) => {
     e.preventDefault()
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Modelo", "Serie", "Motivo"],
-      ["HIS-55U7KQ", "SN123456789", "Averia funcional"],
-      ["HIS-43A7KQ", "SN987654321", "Dano estetico"],
+      ["Modelo", "Serie", "Motivo", "Nro. Identificacion Interno Tienda"],
+      ["HIS-55U7KQ", "SN123456789", "Averia funcional", "INT-001"],
+      ["HIS-43A7KQ", "SN987654321", "Dano estetico", ""],
     ])
+    // Set column widths
+    ws["!cols"] = [{ wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 36 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Equipos")
     XLSX.writeFile(wb, "plantilla_equipos.xlsx")
   }
+
+  const hasInternalIds = preview.some(u => u.store_internal_id)
 
   return (
     <div className="space-y-3">
@@ -108,7 +119,7 @@ export default function ExcelUploader({ onUnitsLoaded }: Props) {
             <div className="text-center">
               <p className="text-sm font-medium text-gray-600">Subir Excel</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                Columnas requeridas: Modelo, Serie, Motivo
+                Columnas: Modelo, Serie, Motivo, Nro. Identificacion Interno Tienda (opcional)
               </p>
             </div>
             <input
@@ -134,6 +145,11 @@ export default function ExcelUploader({ onUnitsLoaded }: Props) {
               <span className="text-sm font-medium text-green-700">
                 {preview.length} equipos cargados desde {fileName}
               </span>
+              {hasInternalIds && (
+                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                  Con ID interno
+                </span>
+              )}
             </div>
             <button onClick={handleClear} className="text-gray-400 hover:text-gray-600">
               <X size={15} />
@@ -145,6 +161,9 @@ export default function ExcelUploader({ onUnitsLoaded }: Props) {
                 <div>
                   <p className="text-sm text-gray-700 font-medium">{u.model}</p>
                   <p className="text-xs text-gray-400">S/N: {u.serial}</p>
+                  {u.store_internal_id && (
+                    <p className="text-xs text-blue-500">ID interno: {u.store_internal_id}</p>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500">{u.reason}</p>
               </div>

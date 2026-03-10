@@ -7,6 +7,13 @@ import { Profile, Store, Assignment, EditRequest } from "@/lib/types"
 import { LogOut, Users, Store as StoreIcon, ClipboardList, Bell, Plus, Check, X } from "lucide-react"
 import ExcelUploader from "@/components/admin/ExcelUploader"
 
+interface Unit {
+  model: string
+  serial: string
+  reason: string
+  store_internal_id?: string
+}
+
 interface Props {
   profile: Profile
   technicians: Profile[]
@@ -26,9 +33,10 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
   const [selectedTechnician, setSelectedTechnician] = useState("")
   const [selectedStore, setSelectedStore] = useState("")
   const [visitDate, setVisitDate] = useState("")
-  const [units, setUnits] = useState([{ model: "", serial: "", reason: "" }])
+  const [units, setUnits] = useState<Unit[]>([{ model: "", serial: "", reason: "", store_internal_id: "" }])
   const [assignSuccess, setAssignSuccess] = useState("")
   const [assignError, setAssignError] = useState("")
+  const [useExcel, setUseExcel] = useState(false)
 
   // Store form state
   const [storeName, setStoreName] = useState("")
@@ -44,7 +52,7 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
   }
 
   const addUnit = () => {
-    setUnits([...units, { model: "", serial: "", reason: "" }])
+    setUnits([...units, { model: "", serial: "", reason: "", store_internal_id: "" }])
   }
 
   const removeUnit = (index: number) => {
@@ -88,6 +96,7 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
       store_model: u.model,
       store_serial: u.serial,
       return_reason: u.reason,
+      store_internal_id: u.store_internal_id || null,
       status: "pending",
     }))
 
@@ -103,7 +112,8 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
     setSelectedTechnician("")
     setSelectedStore("")
     setVisitDate("")
-    setUnits([{ model: "", serial: "", reason: "" }])
+    setUnits([{ model: "", serial: "", reason: "", store_internal_id: "" }])
+    setUseExcel(false)
     setLoading(false)
     router.refresh()
   }
@@ -205,10 +215,10 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
 
         {/* ASIGNAR REVISIONES */}
         {activeTab === "assignments" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800">Nueva asignacion</h2>
-            <form onSubmit={handleAssign} className="space-y-4">
-              <div className="bg-white rounded-xl p-4 border border-gray-100 space-y-3">
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl p-5 border border-gray-100">
+              <h2 className="text-base font-semibold text-gray-800 mb-4">Nueva asignacion</h2>
+              <form onSubmit={handleAssign} className="space-y-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Tecnico</label>
                   <select
@@ -217,12 +227,13 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
                     required
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    <option value="">Selecciona un tecnico</option>
-                    {technicians.map((t) => (
-                      <option key={t.id} value={t.id}>{t.full_name} - {t.email}</option>
+                    <option value="">Seleccionar tecnico</option>
+                    {technicians.filter(t => t.is_active).map((t) => (
+                      <option key={t.id} value={t.id}>{t.full_name}</option>
                     ))}
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Tienda</label>
                   <select
@@ -231,12 +242,13 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
                     required
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    <option value="">Selecciona una tienda</option>
-                    {stores.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name} - {s.city}</option>
+                    <option value="">Seleccionar tienda</option>
+                    {stores.filter(s => s.is_active).map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} — {s.city}</option>
                     ))}
                   </select>
                 </div>
+
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Fecha de visita</label>
                   <input
@@ -247,128 +259,127 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-              </div>
 
-              {/* Equipos */}
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-700">Equipos a revisar</h3>
-                  <button
-                    type="button"
-                    onClick={addUnit}
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    <Plus size={14} />
-                    Anadir equipo
-                  </button>
-                </div>
-
-                {/* Excel Uploader */}
-                <div className="mb-4">
-                  <ExcelUploader onUnitsLoaded={(excelUnits) => {
-                    if (excelUnits.length > 0) setUnits(excelUnits)
-                  }} />
-                </div>
-
-                <div className="space-y-4">
-                  {units.map((unit, index) => (
-                    <div key={index} className="border border-gray-100 rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-gray-500">Equipo {index + 1}</span>
-                        {units.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeUnit(index)}
-                            className="text-red-400 hover:text-red-600"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Modelo"
-                        value={unit.model}
-                        onChange={(e) => updateUnit(index, "model", e.target.value)}
-                        required
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Numero de serie"
-                        value={unit.serial}
-                        onChange={(e) => updateUnit(index, "serial", e.target.value)}
-                        required
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <select
-                        value={unit.reason}
-                        onChange={(e) => updateUnit(index, "reason", e.target.value)}
-                        required
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      >
-                        <option value="">Motivo de devolucion</option>
-                        <option value="Dano estetico">Dano estetico</option>
-                        <option value="Golpe estructural">Golpe estructural</option>
-                        <option value="Dano por agua / humedad">Dano por agua / humedad</option>
-                        <option value="Mercancia usada">Mercancia usada</option>
-                        <option value="Embalaje danado">Embalaje danado</option>
-                        <option value="Producto incompleto">Producto incompleto</option>
-                        <option value="Averia funcional">Averia funcional</option>
-                        <option value="Sin averia aparente (NFF)">Sin averia aparente (NFF)</option>
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {assignError && (
-                <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{assignError}</p>
-              )}
-              {assignSuccess && (
-                <p className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">{assignSuccess}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {loading ? "Asignando..." : "Asignar revision"}
-              </button>
-            </form>
-
-            {/* Historial asignaciones */}
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-                Ultimas asignaciones
-              </h3>
-              <div className="space-y-2">
-                {assignments.map((a) => (
-                  <div key={a.id} className="bg-white rounded-xl p-4 border border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{a.store?.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {a.technician?.full_name} - {new Date(a.visit_date).toLocaleDateString("es-ES")}
-                        </p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        a.status === "completed"
-                          ? "bg-green-50 text-green-600"
-                          : a.status === "pending"
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-gray-50 text-gray-500"
-                      }`}>
-                        {a.status === "completed" ? "Completada" : a.status === "pending" ? "Pendiente" : "Cancelada"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {a.assigned_units?.length || 0} equipos
-                    </p>
+                {/* Toggle Excel / Manual */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs text-gray-500">Equipos a revisar</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUseExcel(!useExcel)
+                        setUnits([{ model: "", serial: "", reason: "", store_internal_id: "" }])
+                      }}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {useExcel ? "Introducir manualmente" : "Cargar desde Excel"}
+                    </button>
                   </div>
-                ))}
-              </div>
+
+                  {useExcel ? (
+                    <ExcelUploader onUnitsLoaded={(u) => setUnits(u)} />
+                  ) : (
+                    <div className="space-y-3">
+                      {units.map((unit, i) => (
+                        <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-gray-500">Equipo {i + 1}</span>
+                            {units.length > 1 && (
+                              <button type="button" onClick={() => removeUnit(i)} className="text-gray-400 hover:text-red-500 transition">
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Modelo"
+                            value={unit.model}
+                            onChange={(e) => updateUnit(i, "model", e.target.value)}
+                            required
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Numero de serie"
+                            value={unit.serial}
+                            onChange={(e) => updateUnit(i, "serial", e.target.value)}
+                            required
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Motivo de devolucion"
+                            value={unit.reason}
+                            onChange={(e) => updateUnit(i, "reason", e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Nro. Identificacion Interno Tienda (opcional)"
+                            value={unit.store_internal_id || ""}
+                            onChange={(e) => updateUnit(i, "store_internal_id", e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          />
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={addUnit}
+                        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 transition"
+                      >
+                        <Plus size={15} />
+                        Agregar equipo
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {assignError && (
+                  <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{assignError}</p>
+                )}
+                {assignSuccess && (
+                  <p className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">{assignSuccess}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || units.length === 0}
+                  className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {loading ? "Guardando..." : "Crear asignacion"}
+                </button>
+              </form>
+            </div>
+
+            {/* Lista de asignaciones */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                Asignaciones recientes
+              </h3>
+              {assignments.map((a) => (
+                <div key={a.id} className="bg-white rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{a.store?.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {a.technician?.full_name} - {new Date(a.visit_date).toLocaleDateString("es-ES")}
+                      </p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      a.status === "completed"
+                        ? "bg-green-50 text-green-600"
+                        : a.status === "pending"
+                        ? "bg-blue-50 text-blue-600"
+                        : "bg-gray-50 text-gray-500"
+                    }`}>
+                      {a.status === "completed" ? "Completada" : a.status === "pending" ? "Pendiente" : "Cancelada"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {a.assigned_units?.length || 0} equipos
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -392,10 +403,7 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
                     <button
                       onClick={async () => {
                         const supabase = createClient()
-                        await supabase
-                          .from("profiles")
-                          .update({ is_active: !t.is_active })
-                          .eq("id", t.id)
+                        await supabase.from("profiles").update({ is_active: !t.is_active }).eq("id", t.id)
                         router.refresh()
                       }}
                       className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
@@ -420,63 +428,41 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
             <form onSubmit={handleAddStore} className="bg-white rounded-xl p-4 border border-gray-100 space-y-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Nombre</label>
-                <input
-                  type="text"
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                  required
+                <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} required
                   placeholder="El Corte Ingles"
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Ciudad</label>
-                <input
-                  type="text"
-                  value={storeCity}
-                  onChange={(e) => setStoreCity(e.target.value)}
-                  required
+                <input type="text" value={storeCity} onChange={(e) => setStoreCity(e.target.value)} required
                   placeholder="Madrid"
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Pais</label>
-                <select
-                  value={storeCountry}
-                  onChange={(e) => setStoreCountry(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
+                <select value={storeCountry} onChange={(e) => setStoreCountry(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                   <option value="ES">Espana</option>
                   <option value="PT">Portugal</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Direccion</label>
-                <input
-                  type="text"
-                  value={storeAddress}
-                  onChange={(e) => setStoreAddress(e.target.value)}
+                <input type="text" value={storeAddress} onChange={(e) => setStoreAddress(e.target.value)}
                   placeholder="Calle Serrano 47"
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               {storeSuccess && (
                 <p className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">{storeSuccess}</p>
               )}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
-              >
+              <button type="submit" disabled={loading}
+                className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50">
                 {loading ? "Guardando..." : "Anadir tienda"}
               </button>
             </form>
 
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                Tiendas
-              </h3>
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Tiendas</h3>
               {stores.map((s) => (
                 <div key={s.id} className="bg-white rounded-xl p-4 border border-gray-100">
                   <div className="flex items-center justify-between">
@@ -488,10 +474,7 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
                     <button
                       onClick={async () => {
                         const supabase = createClient()
-                        await supabase
-                          .from("stores")
-                          .update({ is_active: !s.is_active })
-                          .eq("id", s.id)
+                        await supabase.from("stores").update({ is_active: !s.is_active }).eq("id", s.id)
                         router.refresh()
                       }}
                       className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
@@ -521,24 +504,20 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
             ) : (
               editRequests.map((req) => (
                 <div key={req.id} className="bg-white rounded-xl p-4 border border-gray-100">
-                  <p className="text-sm font-medium text-gray-800">
-                    {req.technician?.full_name}
-                  </p>
+                  <p className="text-sm font-medium text-gray-800">{req.technician?.full_name}</p>
                   <p className="text-xs text-gray-500 mt-1">{req.reason}</p>
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => handleEditRequest(req.id, "approved")}
                       className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-xs font-medium hover:bg-green-100 transition"
                     >
-                      <Check size={12} />
-                      Aprobar
+                      <Check size={12} /> Aprobar
                     </button>
                     <button
                       onClick={() => handleEditRequest(req.id, "rejected")}
                       className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs font-medium hover:bg-red-100 transition"
                     >
-                      <X size={12} />
-                      Rechazar
+                      <X size={12} /> Rechazar
                     </button>
                   </div>
                 </div>
