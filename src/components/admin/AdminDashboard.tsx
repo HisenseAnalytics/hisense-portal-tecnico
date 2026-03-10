@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Profile, Store, Assignment, EditRequest } from "@/lib/types"
-import { LogOut, Users, Store as StoreIcon, ClipboardList, Bell, Plus, Check, X } from "lucide-react"
+import { LogOut, Users, Store as StoreIcon, ClipboardList, Bell, Plus, Check, X, LayoutList, Search } from "lucide-react"
 import ExcelUploader from "@/components/admin/ExcelUploader"
 
 interface Unit {
@@ -14,20 +14,38 @@ interface Unit {
   store_internal_id?: string
 }
 
+interface ReviewRow {
+  id: string
+  technician_name: string
+  store_name: string
+  visit_date: string
+  model: string
+  serial: string
+  store_internal_id: string | null
+  unit_status: string
+  inspection_id: string | null
+  fault_category: string | null
+  engineer_status: string | null
+}
+
 interface Props {
   profile: Profile
   technicians: Profile[]
   stores: Store[]
   assignments: Assignment[]
   editRequests: EditRequest[]
+  reviews: ReviewRow[]
 }
 
-type Tab = "assignments" | "technicians" | "stores" | "requests"
+type Tab = "assignments" | "technicians" | "stores" | "requests" | "reviews"
 
-export default function AdminDashboard({ profile, technicians, stores, assignments, editRequests }: Props) {
+export default function AdminDashboard({ profile, technicians, stores, assignments, editRequests, reviews }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>("assignments")
   const [loading, setLoading] = useState(false)
+  const [reviewSearch, setReviewSearch] = useState("")
+  const [reviewFilterTech, setReviewFilterTech] = useState("")
+  const [reviewFilterStatus, setReviewFilterStatus] = useState("")
 
   // Assignment form state
   const [selectedTechnician, setSelectedTechnician] = useState("")
@@ -161,11 +179,36 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
     router.refresh()
   }
 
+  const filteredReviews = reviews.filter(r => {
+    const matchSearch = !reviewSearch ||
+      r.model.toLowerCase().includes(reviewSearch.toLowerCase()) ||
+      r.serial.toLowerCase().includes(reviewSearch.toLowerCase()) ||
+      r.store_name.toLowerCase().includes(reviewSearch.toLowerCase())
+    const matchTech = !reviewFilterTech || r.technician_name === reviewFilterTech
+    const matchStatus = !reviewFilterStatus ||
+      (reviewFilterStatus === 'pending' && !r.inspection_id) ||
+      (reviewFilterStatus === 'completed' && !!r.inspection_id)
+    return matchSearch && matchTech && matchStatus
+  })
+
+  const techNames = [...new Set(reviews.map(r => r.technician_name))]
+
+  const FAULT_LABELS: Record<string, string> = {
+    aesthetic_damage: 'Dano estetico', structural_impact: 'Golpe estructural',
+    water_damage: 'Dano por agua', used_merchandise: 'Mercancia usada',
+    damaged_packaging: 'Embalaje danado', incomplete_product: 'Producto incompleto',
+    no_power: 'No enciende', electrical_fault: 'Averia electrica',
+    mechanical_fault: 'Averia mecanica', software_fault: 'Fallo de software',
+    functional_fault: 'Averia funcional', abnormal_noise: 'Ruido anormal',
+    gas_leak: 'Perdida de gas', no_fault_found: 'Sin averia (NFF)',
+  }
+
   const tabs = [
-    { id: "assignments", label: "Asignar", icon: ClipboardList },
-    { id: "technicians", label: "Tecnicos", icon: Users },
-    { id: "stores", label: "Tiendas", icon: StoreIcon },
-    { id: "requests", label: "Solicitudes", icon: Bell, badge: editRequests.length },
+    { id: 'assignments', label: 'Asignar', icon: ClipboardList },
+    { id: 'reviews', label: 'Revisiones', icon: LayoutList },
+    { id: 'technicians', label: 'Tecnicos', icon: Users },
+    { id: 'stores', label: 'Tiendas', icon: StoreIcon },
+    { id: 'requests', label: 'Solicitudes', icon: Bell, badge: editRequests.length },
   ]
 
   return (
@@ -188,7 +231,7 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
 
       {/* Tabs */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-2xl mx-auto px-4 flex gap-1">
+        <div className="max-w-5xl mx-auto px-4 flex gap-1 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -211,7 +254,7 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
         </div>
       </div>
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6">
 
         {/* ASIGNAR REVISIONES */}
         {activeTab === "assignments" && (
@@ -523,6 +566,92 @@ export default function AdminDashboard({ profile, technicians, stores, assignmen
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* REVISIONES */}
+        {activeTab === "reviews" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800">Todas las revisiones</h2>
+              <div className="flex gap-2 text-xs">
+                <span className="bg-green-50 text-green-600 px-2 py-1 rounded-full font-medium">
+                  {reviews.filter(r => !!r.inspection_id).length} completadas
+                </span>
+                <span className="bg-amber-50 text-amber-600 px-2 py-1 rounded-full font-medium">
+                  {reviews.filter(r => !r.inspection_id).length} pendientes
+                </span>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-3 text-gray-400" />
+                  <input type="text" placeholder="Buscar modelo, serie, tienda..." value={reviewSearch}
+                    onChange={(e) => setReviewSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <select value={reviewFilterTech} onChange={(e) => setReviewFilterTech(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">Todos los tecnicos</option>
+                  {techNames.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <select value={reviewFilterStatus} onChange={(e) => setReviewFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">Todos los estados</option>
+                  <option value="pending">Pendiente</option>
+                  <option value="completed">Completada</option>
+                </select>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-50">
+                <p className="text-sm font-medium text-gray-700">{filteredReviews.length} equipos</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left">Tecnico</th>
+                      <th className="px-4 py-3 text-left">Tienda</th>
+                      <th className="px-4 py-3 text-left">Fecha</th>
+                      <th className="px-4 py-3 text-left">Modelo</th>
+                      <th className="px-4 py-3 text-left">Serie</th>
+                      <th className="px-4 py-3 text-left">ID Interno</th>
+                      <th className="px-4 py-3 text-left">Estado</th>
+                      <th className="px-4 py-3 text-left">Fallo</th>
+                      <th className="px-4 py-3 text-left">Clasificacion</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredReviews.map((r, idx) => (
+                      <tr key={idx} className={["transition", !r.inspection_id ? "bg-amber-50/30" : "hover:bg-gray-50"].join(" ")}>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-medium">{r.technician_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{r.store_name}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.visit_date).toLocaleDateString("es-ES")}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{r.model}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{r.serial}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{r.store_internal_id || <span className="text-gray-300">—</span>}</td>
+                        <td className="px-4 py-3">
+                          <span className={r.inspection_id ? "text-xs px-2 py-1 rounded-full font-medium bg-green-50 text-green-600" : "text-xs px-2 py-1 rounded-full font-medium bg-amber-50 text-amber-600"}>
+                            {r.inspection_id ? "Completada" : "Pendiente"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {r.fault_category ? (FAULT_LABELS[r.fault_category] || r.fault_category) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {r.engineer_status === "accepted" && <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-50 text-green-600">Aceptado</span>}
+                          {r.engineer_status === "rejected" && <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-50 text-red-500">Rechazado</span>}
+                          {r.engineer_status === "verify" && <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-50 text-amber-600">Verificar</span>}
+                          {!r.engineer_status && <span className="text-gray-300 text-xs">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </main>
